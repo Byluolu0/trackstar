@@ -12,7 +12,7 @@
  * @property string $update_time
  * @property integer $update_user_id
  */
-class Project extends CActiveRecord
+class Project extends TrackStarActiveRecord
 {
 	/**
 	 * @return string the associated database table name
@@ -30,9 +30,8 @@ class Project extends CActiveRecord
 		// NOTE: you should only define rules for those attributes that
 		// will receive user inputs.
 		return array(
-			array('create_user_id, update_user_id', 'numerical', 'integerOnly'=>true),
 			array('name', 'length', 'max'=>128),
-			array('description, create_time, update_time', 'safe'),
+			array('description', 'safe'),
 			// The following rule is used by search().
 			// @todo Please remove those attributes that should not be searched.
 			array('id, name, description, create_time, create_user_id, update_time, update_user_id', 'safe', 'on'=>'search'),
@@ -119,5 +118,69 @@ class Project extends CActiveRecord
            $usersArray = CHtml::listData($this->users, 'id', 'username');
            return $usersArray;
        }
+       
+       public function associateUserToRole($role, $userId) 
+        {
+            $sql = "INSERT INTO tbl_project_user_role (project_id, user_id, role) VALUES (:projectId, :userId, :role)";
+            $command = Yii::app()->db->createCommand($sql); 
+            $command->bindValue(":projectId", $this->id, PDO::PARAM_INT); 
+            $command->bindValue(":userId", $userId, PDO::PARAM_INT); 
+            $command->bindValue(":role", $role, PDO::PARAM_STR);
+            return $command->execute();
+        }
+        
+        /**
+        * removes an association between the project, the user and the user's role within the project
+        */ 
+      public function removeUserFromRole($role, $userId) {
+          $sql = "DELETE FROM tbl_project_user_role WHERE project_ id=:projectId AND user_id=:userId AND role=:role";
+          $command = Yii::app()->db->createCommand($sql); 
+          $command->bindValue(":projectId", $this->id, PDO::PARAM_INT); 
+          $command->bindValue(":userId", $userId, PDO::PARAM_INT); 
+          $command->bindValue(":role", $role, PDO::PARAM_STR);
+          return $command->execute();
+      }
+      
+      public function isUserInRole($role) 
+        {
+            $sql = "SELECT role FROM tbl_project_user_role WHERE project_id=:projectId AND user_id=:userId AND role=:role";
+            $command = Yii::app()->db->createCommand($sql); 
+            $command->bindValue(":projectId", $this->id, PDO::PARAM_INT); 
+            $command->bindValue(":userId", Yii::app()->user->getId(), PDO::PARAM_INT); 
+            $command->bindValue(":role", $role, PDO::PARAM_STR); 
+            return $command->execute()==1 ? true : false;
+        }
+        
+        /** 
+        * Returns an array of available roles in which a user can be placed when being added to a project 
+        */
+      public static function getUserRoleOptions() 
+      { 
+          return CHtml::listData(Yii::app()->authManager->getRoles(), 'name', 'name'); 
+      }
+
+      /** 
+        * Makes an association between a user and a the project 
+        */
+      public function associateUserToProject($user) 
+      {
+          $sql = "INSERT INTO tbl_project_user_assignment (project_id, user_id) VALUES (:projectId, :userId)";
+          $command = Yii::app()->db->createCommand($sql);
+          $command->bindValue(":projectId", $this->id, PDO::PARAM_INT); 
+          $command->bindValue(":userId", $user->id, PDO::PARAM_INT); 
+          return $command->execute();
+      } 
+
+      /**
+        * Determines whether or not a user is already part of a project
+        */ 
+      public function isUserInProject($user) 
+      {
+          $sql = "SELECT user_id FROM tbl_project_user_assignment WHERE project_id=:projectId AND user_id=:userId";
+          $command = Yii::app()->db->createCommand($sql); 
+          $command->bindValue(":projectId", $this->id, PDO::PARAM_INT); 
+          $command->bindValue(":userId", $user->id, PDO::PARAM_INT); 
+          return $command->execute()==1 ? true : false;
+      }
 
 }
