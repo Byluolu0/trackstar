@@ -27,7 +27,7 @@ return array(
 			// If removed, Gii defaults to localhost only. Edit carefully to taste.
 
 		),
-		
+		'admin',
 	),
 
 	// application components
